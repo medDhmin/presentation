@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L'Assistant Shopping Personnel — Gestion de Projet Data & IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0d0d14;
+  --bg2:     #090910;
+  --violet:  #8B5CF6;
+  --cyan:    #06B6D4;
+  --text:    #ffffff;
+  --muted:   #94a3b8;
+  --border:  rgba(255,255,255,0.07);
+  --card-bg: rgba(255,255,255,0.03);
+  --surface: #13131f;
+}
+
+body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding: 64px 80px 48px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+  overflow: hidden;
+}
+.slide.active { opacity: 1; pointer-events: all; }
+
+/* Grid bg */
+.slide::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+
+/* Nav */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: rgba(13,13,20,0.9); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px; display: flex; justify-content: space-between; align-items: center;
+}
+.nav-left { display: flex; align-items: center; gap: 12px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+.nav-title { font-size: 12px; color: var(--muted); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.nav-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 5px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: 'Outfit', sans-serif; transition: all 0.2s; }
+.nav-btn:hover { border-color: var(--violet); color: var(--violet); }
+.nav-counter { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; min-width: 48px; text-align: center; }
+
+/* Progress */
+.progress { position: fixed; top: 45px; left: 0; height: 2px; z-index: 998; background: linear-gradient(90deg, var(--violet), var(--cyan)); box-shadow: 0 0 12px var(--violet); transition: width 0.4s ease; }
+
+/* Glow card */
+.glow-card {
+  position: relative; z-index: 1;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 24px; overflow: hidden; transition: border-color 0.3s;
+}
+.glow-card::before {
+  content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+  left: var(--mx, -200px); top: var(--my, -200px); transform: translate(-50%,-50%); pointer-events: none; transition: left 0.1s, top 0.1s;
+}
+.glow-card:hover { border-color: rgba(139,92,246,0.4); }
+.glow-card.cyan::before { background: radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%); }
+.glow-card.cyan:hover { border-color: rgba(6,182,212,0.4); }
+
+/* Typography */
+.label { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--violet); margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; }
+.label.cyan { color: var(--cyan); }
+.page-title { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--violet); margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; position: relative; z-index: 1; }
+h1 { font-size: 64px; font-weight: 900; line-height: 1.05; }
+p { line-height: 1.7; }
+.muted { color: var(--muted); }
+
+/* Badge */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.badge-v { background: rgba(139,92,246,0.15); color: var(--violet); border: 1px solid rgba(139,92,246,0.3); }
+.badge-c { background: rgba(6,182,212,0.15); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
+.badge-r { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+/* Grids */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* Divider */
+.glow-rule { width: 48px; height: 2px; background: var(--violet); box-shadow: 0 0 8px var(--violet); margin: 20px 0; border-radius: 2px; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; position: relative; z-index: 1; }
+th { background: rgba(139,92,246,0.08); color: var(--violet); padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid rgba(139,92,246,0.3); font-family: 'JetBrains Mono', monospace; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); vertical-align: top; }
+tr:hover td { background: rgba(139,92,246,0.04); }
+
+/* Sprint cards */
+.sprint { background: var(--card-bg); border: 1px solid var(--border); border-left: 3px solid var(--violet); border-radius: 10px; padding: 18px 22px; margin-bottom: 12px; position: relative; z-index: 1; }
+.sprint.cyan { border-left-color: var(--cyan); }
+.sprint-tag { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--violet); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+.sprint.cyan .sprint-tag { color: var(--cyan); }
+.sprint h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.sprint p { font-size: 13px; color: var(--muted); }
+
+/* Timeline */
+.tl { padding-left: 28px; position: relative; }
+.tl::before { content:''; position:absolute; left:6px; top:4px; bottom:4px; width:1px; background: rgba(139,92,246,0.3); }
+.tl-item { position: relative; margin-bottom: 16px; }
+.tl-item::before { content:''; position:absolute; left:-26px; top:6px; width:10px; height:10px; border-radius:50%; background: var(--violet); box-shadow: 0 0 8px var(--violet); border:2px solid var(--bg); }
+.tl-tag { font-size: 10px; color: var(--violet); font-weight: 700; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace; }
+.tl-item h4 { font-size: 14px; font-weight: 600; margin: 2px 0; }
+.tl-item p { font-size: 12px; color: var(--muted); }
+
+/* KPI */
+.kpi-row { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; margin-bottom: 20px; }
+.kpi { background: var(--card-bg); border: 1px solid var(--border); border-top: 2px solid var(--violet); border-radius: 10px; padding: 16px 10px; text-align: center; position: relative; z-index: 1; }
+.kpi-val { font-size: 28px; font-weight: 800; color: var(--violet); line-height: 1; }
+.kpi-lbl { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+/* Flow */
+.flow { display: flex; align-items: stretch; gap: 0; }
+.flow-step { flex: 1; background: var(--card-bg); border: 1px solid var(--border); padding: 14px 16px; text-align: center; border-top: 2px solid var(--violet); font-size: 13px; position: relative; z-index: 1; }
+.flow-step:first-child { border-radius: 10px 0 0 10px; }
+.flow-step:last-child { border-radius: 0 10px 10px 0; }
+.flow-step strong { display: block; font-size: 14px; font-weight: 700; }
+.flow-step span { font-size: 11px; color: var(--muted); }
+.flow-arrow { display: flex; align-items: center; padding: 0 6px; color: rgba(139,92,246,0.4); font-size: 18px; }
+
+/* Lists */
+ul.dash { list-style: none; padding: 0; }
+ul.dash li { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+ul.dash li:last-child { border-bottom: none; }
+ul.dash li::before { content: '— '; color: var(--violet); font-weight: 700; }
+ul.dash.cyan li::before { color: var(--cyan); }
+
+/* Cover */
+.cover-method { display: inline-flex; align-items: center; gap: 10px; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); color: var(--cyan); padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px; margin-top: 28px; }
+
+/* Spotlight */
+.spotlight { position: absolute; pointer-events: none; border-radius: 50%; filter: blur(80px); opacity: 0.1; }
+
+/* Content wrapper */
+.content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
+
+/* Backlog item */
+.story { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 1; }
+.story-num { background: rgba(139,92,246,0.15); color: var(--violet); border: 1px solid rgba(139,92,246,0.3); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+.story-num.cyan { background: rgba(6,182,212,0.15); color: var(--cyan); border-color: rgba(6,182,212,0.3); }
+.story-text { font-size: 13px; color: var(--muted); }
+.story-text strong { color: var(--text); }
+
+/* Anim */
+@keyframes blurIn { from { filter:blur(12px); opacity:0; transform:translateY(20px); } to { filter:blur(0); opacity:1; transform:translateY(0); } }
+.slide.active .anim { animation: blurIn 0.6s ease forwards; }
+.slide.active .anim-d1 { animation-delay:0.05s; opacity:0; }
+.slide.active .anim-d2 { animation-delay:0.15s; opacity:0; }
+.slide.active .anim-d3 { animation-delay:0.25s; opacity:0; }
+.slide.active .anim-d4 { animation-delay:0.35s; opacity:0; }
+.slide.active .anim-d5 { animation-delay:0.45s; opacity:0; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-left">
+    <div class="nav-dot"></div>
+    <span class="nav-title">L'Assistant Shopping Personnel — Gestion de Projet Data & IA</span>
+  </div>
+  <div class="nav-right">
+    <button class="nav-btn" onclick="prevSlide()">← Précédent</button>
+    <span class="nav-counter" id="counter">01 / 12</span>
+    <button class="nav-btn" onclick="nextSlide()">Suivant →</button>
+  </div>
+</nav>
+<div class="progress" id="progress" style="width:8.33%"></div>
+
+<!-- ═══════════════════════ SLIDE 1 — COUVERTURE ═══════════════════════ -->
+<div class="slide active" id="slide-1">
+  <div class="spotlight" style="width:600px;height:600px;background:var(--violet);top:-200px;left:-100px;"></div>
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);bottom:-100px;right:0;"></div>
+  <div class="content" style="justify-content:center;padding-left:20px;border-left:3px solid var(--violet);">
+    <div class="label anim anim-d1">Gestion de Projet Data &amp; IA</div>
+    <h1 class="anim anim-d2" style="max-width:750px;">L'Assistant<br><span style="color:var(--violet);">Shopping</span><br>Personnel</h1>
+    <div class="glow-rule anim anim-d3"></div>
+    <p class="muted anim anim-d3" style="max-width:520px;font-size:17px;">Un chatbot intelligent sur une application de mode qui aide l'utilisateur à trouver la tenue parfaite pour chaque événement.</p>
+    <div class="cover-method anim anim-d4">⚡ Méthode : Agile Data</div>
+    <p class="muted anim anim-d5" style="font-size:12px;margin-top:36px;">Mohamed Dhmin &nbsp;·&nbsp; Examen Gestion de Projet Data &amp; IA &nbsp;·&nbsp; 2025</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 2 — PLAN ═══════════════════════ -->
+<div class="slide" id="slide-2">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--violet);top:-100px;right:-100px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Plan de la présentation</div>
+    <div class="grid-3 anim anim-d2" style="gap:16px;">
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">01</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Contexte &amp; Problématique</h3>
+        <p class="muted" style="font-size:13px;">Le projet chatbot mode, les enjeux et la question centrale.</p>
+      </div>
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">02</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Cadrage du projet</h3>
+        <p class="muted" style="font-size:13px;">Objectifs SMART, périmètre, critères de succès.</p>
+      </div>
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">03</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Choix méthodologique</h3>
+        <p class="muted" style="font-size:13px;">Pourquoi Agile Data ? Comparaison avec CRISP-DM et HYBRID.</p>
+      </div>
+      <div class="glow-card cyan">
+        <div class="label cyan" style="margin-bottom:8px;">04</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Backlog &amp; Sprints</h3>
+        <p class="muted" style="font-size:13px;">User stories, priorisation, sprints d'exploration et de modélisation.</p>
+      </div>
+      <div class="glow-card cyan">
+        <div class="label cyan" style="margin-bottom:8px;">05</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Planification &amp; Équipe</h3>
+        <p class="muted" style="font-size:13px;">Timeline, rôles RACI, vélocité des sprints.</p>
+      </div>
+      <div class="glow-card cyan">
+        <div class="label cyan" style="margin-bottom:8px;">06</div>
+        <h3 style="font-size:15px;margin-bottom:8px;">Risques, KPIs &amp; Communication</h3>
+        <p class="muted" style="font-size:13px;">Maîtrise des risques, pilotage, storytelling Data.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 3 — CONTEXTE ═══════════════════════ -->
+<div class="slide" id="slide-3">
+  <div class="spotlight" style="width:500px;height:500px;background:var(--violet);top:-150px;left:-150px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Contexte &amp; Problématique</div>
+    <div class="grid-2 anim anim-d2">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;">Le Projet</div>
+          <p style="font-size:14px;">Un <strong>chatbot IA intégré à une application de mode</strong> qui aide l'utilisateur à trouver une tenue en fonction d'un événement précis — ex : <em style="color:var(--cyan);">"Je cherche une tenue pour une soutenance de diplôme."</em></p>
+        </div>
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;">Fonctionnement attendu</div>
+          <ul class="dash" style="margin-top:4px;">
+            <li>L'utilisateur décrit son événement en langage naturel</li>
+            <li>Le chatbot NLP analyse le contexte et les préférences</li>
+            <li>Le modèle recommande des tenues personnalisées</li>
+            <li>Apprentissage continu basé sur les retours utilisateurs</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="glow-card cyan">
+          <div class="label cyan" style="margin-bottom:8px;">⚡ La Problématique Centrale</div>
+          <p style="font-size:15px;font-style:italic;line-height:1.6;">"Comment construire un modèle de recommandation pertinent alors que les <strong>préférences mode changent en permanence</strong> et que les données utilisateurs sont rares au démarrage ?"</p>
+        </div>
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;">Enjeux spécifiques</div>
+          <ul class="dash" style="margin-top:4px;">
+            <li>Cold start : peu de données au lancement</li>
+            <li>Tendances mode évoluent chaque saison</li>
+            <li>Time to market court — concurrence forte</li>
+            <li>Tests A/B continus nécessaires</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 4 — SMART ═══════════════════════ -->
+<div class="slide" id="slide-4">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);bottom:-100px;right:-100px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Cadrage du projet — Objectifs SMART</div>
+    <div class="glow-card anim anim-d2" style="margin-bottom:16px;">
+      <p style="font-size:14px;"><strong style="color:var(--violet);">Besoin métier traduit :</strong> Augmenter le taux de conversion de l'application de mode de 15% en proposant des recommandations vestimentaires personnalisées via un chatbot IA contextuel.</p>
+    </div>
+    <div class="anim anim-d3">
+    <table>
+      <tr><th>Critère SMART</th><th>Objectif Data &amp; IA appliqué au projet</th></tr>
+      <tr><td><span class="badge badge-v">Spécifique</span></td><td>Recommander 3 tenues pertinentes en moins de 5 secondes à partir d'une description d'événement en langage naturel</td></tr>
+      <tr><td><span class="badge badge-v">Mesurable</span></td><td>Score de pertinence ≥ 80% (validation utilisateur) — taux de clic sur recommandation ≥ 35%</td></tr>
+      <tr><td><span class="badge badge-v">Atteignable</span></td><td>Basé sur un catalogue de 10 000 articles et les historiques de 500 utilisateurs bêta</td></tr>
+      <tr><td><span class="badge badge-v">Réaliste</span></td><td>Aligné sur l'objectif business : +15% de conversion et fidélisation des utilisateurs de l'app</td></tr>
+      <tr><td><span class="badge badge-v">Temporel</span></td><td>MVP chatbot fonctionnel en Sprint 3 (S6) · Version complète en Sprint 6 (S12) · Production à M+4</td></tr>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 5 — CHOIX MÉTHODO ═══════════════════════ -->
+<div class="slide" id="slide-5">
+  <div class="spotlight" style="width:500px;height:500px;background:var(--violet);top:-200px;right:-150px;opacity:0.07;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Choix méthodologique — Pourquoi Agile Data ?</div>
+    <div class="grid-3 anim anim-d2" style="margin-bottom:16px;">
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">CRISP-DM</div>
+        <h3 style="font-size:15px;margin-bottom:10px;">Trop rigide</h3>
+        <ul class="dash">
+          <li>Cycle linéaire inadapté aux tendances mode changeantes</li>
+          <li>Pas de livraison rapide de valeur</li>
+          <li>Peu d'implication continue des utilisateurs</li>
+        </ul>
+      </div>
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">HYBRID</div>
+        <h3 style="font-size:15px;margin-bottom:10px;">Trop lourd</h3>
+        <ul class="dash">
+          <li>Phase d'industrialisation longue non nécessaire ici</li>
+          <li>Pas de contrainte IoT ou infrastructure critique</li>
+          <li>Surcoût pour un produit digital évolutif</li>
+        </ul>
+      </div>
+      <div class="glow-card cyan" style="border-color:rgba(6,182,212,0.3);">
+        <div class="label cyan" style="margin-bottom:8px;">AGILE DATA ✓</div>
+        <h3 style="font-size:15px;margin-bottom:10px;color:var(--cyan);">Le choix idéal</h3>
+        <ul class="dash cyan">
+          <li>Itérations rapides sur le modèle de recommandation</li>
+          <li>Tests A/B intégrés à chaque sprint</li>
+          <li>Validation utilisateur continue</li>
+          <li>Adaptation rapide aux tendances</li>
+        </ul>
+      </div>
+    </div>
+    <div class="glow-card anim anim-d3">
+      <div class="label" style="margin-bottom:6px;">Justification</div>
+      <p style="font-size:14px;">Le projet Shopping Assistant est un <strong>produit Data vivant et évolutif</strong> : les tendances mode changent chaque saison, les comportements utilisateurs évoluent, et le modèle doit s'améliorer en continu. L'objectif n'est pas une infrastructure critique mais une <strong>livraison rapide de valeur</strong> avec des cycles courts d'amélioration.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 6 — BACKLOG & SPRINTS ═══════════════════════ -->
+<div class="slide" id="slide-6">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);bottom:-100px;left:-100px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Backlog &amp; Organisation des Sprints</div>
+    <div class="grid-2 anim anim-d2">
+      <div>
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">User Stories prioritaires</p>
+        <div class="story"><div class="story-num">US-01</div><div class="story-text"><strong>En tant qu'utilisateur</strong>, je veux décrire mon événement pour recevoir 3 tenues adaptées en moins de 5 secondes.</div></div>
+        <div class="story"><div class="story-num">US-02</div><div class="story-text"><strong>En tant qu'utilisateur</strong>, je veux noter les tenues proposées pour améliorer les prochaines recommandations.</div></div>
+        <div class="story"><div class="story-num">US-03</div><div class="story-text"><strong>En tant qu'utilisateur</strong>, je veux que le chatbot mémorise mes préférences passées.</div></div>
+        <div class="story"><div class="story-num cyan">US-04</div><div class="story-text"><strong>En tant qu'admin</strong>, je veux voir les métriques de pertinence et de clic par recommandation.</div></div>
+        <div class="story"><div class="story-num cyan">US-05</div><div class="story-text"><strong>En tant qu'admin</strong>, je veux mettre à jour le catalogue mode selon les nouvelles collections.</div></div>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">Organisation des sprints (2 semaines)</p>
+        <div class="sprint">
+          <div class="sprint-tag">Sprint 1–2 · Exploration des données</div>
+          <h3>Comprendre les données mode</h3>
+          <p>Analyse du catalogue, identification des patterns, exploration des historiques d'achat, définition des features NLP.</p>
+        </div>
+        <div class="sprint">
+          <div class="sprint-tag">Sprint 3–4 · MVP Chatbot</div>
+          <h3>Premier modèle fonctionnel</h3>
+          <p>Implémentation du NLP de base, moteur de recommandation initial, validation par les utilisateurs bêta.</p>
+        </div>
+        <div class="sprint cyan">
+          <div class="sprint-tag">Sprint 5–6 · Personnalisation</div>
+          <h3>Amélioration &amp; Tests A/B</h3>
+          <p>Intégration du feedback utilisateur, tests A/B sur les algorithmes, optimisation des scores de pertinence.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 7 — PLANIFICATION ═══════════════════════ -->
+<div class="slide" id="slide-7">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);top:-100px;right:-100px;opacity:0.07;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Planification &amp; Organisation de l'équipe</div>
+    <div class="grid-2 anim anim-d2">
+      <div>
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:16px;">Timeline — 5 mois (10 sprints)</p>
+        <div class="tl">
+          <div class="tl-item">
+            <div class="tl-tag">S1–S2 · Mois 1</div>
+            <h4>Cadrage &amp; Exploration initiale</h4>
+            <p>Analyse catalogue, exploration données, définition backlog</p>
+          </div>
+          <div class="tl-item">
+            <div class="tl-tag">S3–S4 · Mois 2</div>
+            <h4>MVP Chatbot fonctionnel</h4>
+            <p>NLP basique + recommandation initiale, 1ère validation bêta</p>
+          </div>
+          <div class="tl-item">
+            <div class="tl-tag">S5–S6 · Mois 3 — Jalon MVP</div>
+            <h4>Personnalisation &amp; Tests A/B</h4>
+            <p>Feedback loop, amélioration modèle, score pertinence ≥ 80%</p>
+          </div>
+          <div class="tl-item" style="--violet:#06B6D4;">
+            <div class="tl-tag" style="color:var(--cyan);">S7–S8 · Mois 4</div>
+            <h4>Optimisation &amp; Scalabilité</h4>
+            <p>Latence &lt;5s, gestion cold start, nouvelles collections</p>
+          </div>
+          <div class="tl-item">
+            <div class="tl-tag">S9–S10 · Mois 5</div>
+            <h4>🚀 Déploiement production</h4>
+            <p>Monitoring continu, mise en production, go live</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:16px;">Équipe &amp; RACI</p>
+        <table>
+          <tr><th>Rôle</th><th>Expl.</th><th>MVP</th><th>Prod.</th></tr>
+          <tr><td>Product Owner Data</td><td><span class="badge badge-c">A</span></td><td><span class="badge badge-c">A</span></td><td><span class="badge badge-c">A</span></td></tr>
+          <tr><td>Data Scientist NLP</td><td><span class="badge badge-v">R</span></td><td><span class="badge badge-v">R</span></td><td><span class="badge badge-v">C</span></td></tr>
+          <tr><td>ML Engineer</td><td><span class="badge badge-v">C</span></td><td><span class="badge badge-v">R</span></td><td><span class="badge badge-v">R</span></td></tr>
+          <tr><td>UX / Product Designer</td><td><span class="badge badge-v">C</span></td><td><span class="badge badge-v">R</span></td><td><span class="badge badge-v">C</span></td></tr>
+          <tr><td>Sponsor métier</td><td><span class="badge badge-c">I</span></td><td><span class="badge badge-c">A</span></td><td><span class="badge badge-c">A</span></td></tr>
+        </table>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace;">R=Responsable · A=Accountable · C=Consulté · I=Informé</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 8 — RISQUES ═══════════════════════ -->
+<div class="slide" id="slide-8">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--violet);top:-100px;left:-100px;opacity:0.07;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Gestion des risques</div>
+    <div class="grid-2 anim anim-d2">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;color:#f87171;">Risques Data &amp; Modèle</div>
+          <ul class="dash">
+            <li>Cold start : manque de données utilisateurs au lancement</li>
+            <li>Biais de sélection dans les données d'entraînement</li>
+            <li>Dérive du modèle avec les nouvelles tendances mode</li>
+            <li>Hallucinations du chatbot NLP hors contexte mode</li>
+          </ul>
+        </div>
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;color:#f87171;">Risques produit &amp; UX</div>
+          <ul class="dash">
+            <li>Faible adoption si les recommandations ne sont pas pertinentes</li>
+            <li>Expérience conversationnelle trop rigide</li>
+            <li>Time to market dépassé face à la concurrence</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="glow-card cyan">
+          <div class="label cyan" style="margin-bottom:8px;">Actions préventives</div>
+          <ul class="dash cyan">
+            <li>Stratégie cold start : recommandations éditoriales au démarrage</li>
+            <li>Feedback loop dès le Sprint 1 pour enrichir les données</li>
+            <li>Tests A/B systématiques à chaque sprint</li>
+            <li>Guardrails NLP pour rester dans le domaine mode</li>
+            <li>Monitoring du score de pertinence en continu</li>
+          </ul>
+        </div>
+        <div class="glow-card">
+          <div class="label" style="margin-bottom:8px;">Conformité &amp; Éthique</div>
+          <ul class="dash">
+            <li>Consentement utilisateur pour l'utilisation des données</li>
+            <li>Pas de profilage racial ou morphologique discriminant</li>
+            <li>Option opt-out pour la personnalisation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 9 — KPIs ═══════════════════════ -->
+<div class="slide" id="slide-9">
+  <div class="spotlight" style="width:500px;height:500px;background:var(--violet);bottom:-200px;right:-100px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">KPIs &amp; Critères de succès</div>
+    <div class="kpi-row anim anim-d2">
+      <div class="kpi"><div class="kpi-val">≥80%</div><div class="kpi-lbl">Score pertinence recommandations</div></div>
+      <div class="kpi"><div class="kpi-val">≥35%</div><div class="kpi-lbl">Taux de clic sur tenues proposées</div></div>
+      <div class="kpi"><div class="kpi-val">&lt;5s</div><div class="kpi-lbl">Temps de réponse chatbot</div></div>
+      <div class="kpi"><div class="kpi-val">+15%</div><div class="kpi-lbl">Conversion sur l'application</div></div>
+      <div class="kpi"><div class="kpi-val">≥4/5</div><div class="kpi-lbl">Note satisfaction utilisateurs</div></div>
+      <div class="kpi"><div class="kpi-val">2 sem.</div><div class="kpi-lbl">Cadence des sprints</div></div>
+    </div>
+    <div class="grid-2 anim anim-d3">
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">KPIs de pilotage Agile</div>
+        <ul class="dash">
+          <li>Vélocité de l'équipe par sprint (story points)</li>
+          <li>Burndown chart — avancement du backlog</li>
+          <li>Taux de user stories validées par sprint</li>
+          <li>Dette technique accumulée</li>
+        </ul>
+      </div>
+      <div class="glow-card cyan">
+        <div class="label cyan" style="margin-bottom:8px;">Critères de validation du MVP (S6)</div>
+        <ul class="dash cyan">
+          <li>Chatbot fonctionnel sur 10 catégories d'événements</li>
+          <li>Score de pertinence ≥ 80% validé par 50 utilisateurs bêta</li>
+          <li>Taux de clic ≥ 35% sur les recommandations proposées</li>
+          <li>Temps de réponse &lt; 5 secondes en production</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 10 — COMMUNICATION ═══════════════════════ -->
+<div class="slide" id="slide-10">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);top:-100px;left:-100px;opacity:0.07;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Communication &amp; Pilotage</div>
+    <div class="grid-2 anim anim-d2">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:4px;">Adapter le message à l'audience</p>
+        <div class="glow-card" style="padding:16px;">
+          <h3 style="font-size:14px;margin-bottom:6px;">Direction / Product Owner</h3>
+          <p style="font-size:13px;" class="muted">Conversion +15%, acquisition utilisateurs, time to market, ROI.</p>
+        </div>
+        <div class="glow-card" style="padding:16px;">
+          <h3 style="font-size:14px;margin-bottom:6px;">Équipe Data / ML</h3>
+          <p style="font-size:13px;" class="muted">Score de pertinence, architecture NLP, pipeline de données, tests A/B.</p>
+        </div>
+        <div class="glow-card" style="padding:16px;">
+          <h3 style="font-size:14px;margin-bottom:6px;">Utilisateurs finaux (bêta)</h3>
+          <p style="font-size:13px;" class="muted">Facilité d'usage, qualité des suggestions, personnalisation.</p>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:16px;">Storytelling Data</p>
+        <div class="flow" style="margin-bottom:18px;">
+          <div class="flow-step"><strong>Problème</strong><span>Choix de tenues difficile, perte de temps</span></div>
+          <div class="flow-arrow">›</div>
+          <div class="flow-step"><strong>Démarche</strong><span>Chatbot NLP + Agile Data</span></div>
+          <div class="flow-arrow">›</div>
+          <div class="flow-step"><strong>Résultats</strong><span>80% pertinence, +15% conversion</span></div>
+          <div class="flow-arrow">›</div>
+          <div class="flow-step"><strong>Décision</strong><span>Production M+5</span></div>
+        </div>
+        <div class="glow-card cyan">
+          <div class="label cyan" style="margin-bottom:8px;">Outils recommandés (Agile Data)</div>
+          <ul class="dash cyan">
+            <li><strong>Linear</strong> — gestion du backlog et des sprints</li>
+            <li><strong>MLflow</strong> — suivi des expériences NLP et modèles</li>
+            <li><strong>Weights &amp; Biases</strong> — monitoring des performances modèle</li>
+            <li><strong>Figma</strong> — prototypage UX du chatbot</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 11 — ÉVALUATION ═══════════════════════ -->
+<div class="slide" id="slide-11">
+  <div class="spotlight" style="width:400px;height:400px;background:var(--violet);bottom:-100px;right:-100px;opacity:0.08;"></div>
+  <div class="content">
+    <div class="page-title anim anim-d1">Évaluation de la réussite du projet</div>
+    <div class="grid-3 anim anim-d2" style="margin-bottom:16px;">
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">Valeur métier créée</div>
+        <ul class="dash">
+          <li>+15% de taux de conversion sur l'app</li>
+          <li>Réduction du temps de choix pour l'utilisateur</li>
+          <li>Fidélisation grâce à la personnalisation</li>
+          <li>Données comportementales précieuses</li>
+        </ul>
+      </div>
+      <div class="glow-card">
+        <div class="label" style="margin-bottom:8px;">Leçons de la méthode Agile</div>
+        <ul class="dash">
+          <li>Les sprints courts permettent une adaptation rapide aux tendances</li>
+          <li>Le feedback utilisateur dès le Sprint 1 enrichit les données</li>
+          <li>Les tests A/B intégrés évitent les mauvaises surprises</li>
+          <li>La vélocité mesure la santé réelle du projet</li>
+        </ul>
+      </div>
+      <div class="glow-card cyan">
+        <div class="label cyan" style="margin-bottom:8px;">Perspectives d'évolution</div>
+        <ul class="dash cyan">
+          <li>Vision assistée (photo → recommandation)</li>
+          <li>Intégration des tendances social media (Instagram, TikTok)</li>
+          <li>Chatbot multilingue</li>
+          <li>Extension à d'autres univers (sport, formel, casual)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="glow-card anim anim-d3" style="border-color:rgba(139,92,246,0.3);">
+      <div class="label" style="margin-bottom:6px;">Ce que l'approche Agile a apporté</div>
+      <p style="font-size:14px;font-style:italic;">"Sans les sprints courts, nous aurions livré un modèle obsolète face aux tendances changeantes. Grâce à l'Agile, <strong>chaque sprint a livré de la valeur immédiate</strong> et le modèle s'est amélioré sprint après sprint grâce au feedback réel des utilisateurs."</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SLIDE 12 — CONCLUSION ═══════════════════════ -->
+<div class="slide" id="slide-12">
+  <div class="spotlight" style="width:600px;height:600px;background:var(--violet);top:-200px;left:-100px;"></div>
+  <div class="spotlight" style="width:400px;height:400px;background:var(--cyan);bottom:-100px;right:0;"></div>
+  <div class="content" style="justify-content:center;padding-left:24px;border-left:3px solid var(--violet);">
+    <div class="label anim anim-d1">Conclusion</div>
+    <h1 class="anim anim-d2" style="font-size:48px;">Synthèse</h1>
+    <div class="glow-rule anim anim-d2"></div>
+    <ul class="dash anim anim-d3" style="margin-top:8px;font-size:15px;">
+      <li style="padding:8px 0;"><strong>Problématique résolue</strong> — Stratégie cold start + feedback loop dès Sprint 1</li>
+      <li style="padding:8px 0;"><strong>Méthode Agile Data justifiée</strong> — Produit vivant, tendances changeantes, time to market court</li>
+      <li style="padding:8px 0;"><strong>Planification réaliste</strong> — 5 mois, 10 sprints, MVP validé à S6</li>
+      <li style="padding:8px 0;"><strong>Risques maîtrisés</strong> — Guardrails NLP, tests A/B, monitoring continu</li>
+      <li style="padding:8px 0;"><strong>Valeur métier démontrée</strong> — +15% conversion, score pertinence ≥ 80%</li>
+    </ul>
+    <div class="cover-method anim anim-d4" style="margin-top:32px;">Mise en production prévue : Mois +5 (Sprint 10)</div>
+  </div>
+</div>
+
+<script>
+  let current = 1;
+  const total = 12;
+
+  function showSlide(n) {
+    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+    document.getElementById('slide-' + n).classList.add('active');
+    document.getElementById('counter').textContent = String(n).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+    document.getElementById('progress').style.width = (n / total * 100) + '%';
+  }
+  function nextSlide() { if (current < total) showSlide(++current); }
+  function prevSlide() { if (current > 1) showSlide(--current); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  { e.preventDefault(); prevSlide(); }
+  });
+
+  document.querySelectorAll('.glow-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+  });
+</script>
+</body>
+</html>
